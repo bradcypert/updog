@@ -2,7 +2,7 @@ const std = @import("std");
 const feed_parser = @import("feed_parser");
 
 pub fn main() !void {
-    var gpa = std.heap.GeneralPurposeAllocator(.{}){};
+    var gpa = std.heap.DebugAllocator(.{}){};
     defer _ = gpa.deinit();
     const allocator = gpa.allocator();
 
@@ -118,38 +118,38 @@ pub fn main() !void {
 fn printFeed(feed: *const feed_parser.Feed) void {
     std.debug.print("Type: {s}\n", .{@tagName(feed.feed_type)});
     std.debug.print("Title: {s}\n", .{feed.title});
-    
+
     if (feed.url) |url| {
         std.debug.print("URL: {s}\n", .{url});
     }
-    
+
     if (feed.description) |desc| {
         std.debug.print("Description: {s}\n", .{desc});
     }
-    
+
     std.debug.print("Items: {d}\n", .{feed.items.items.len});
-    
+
     for (feed.items.items, 0..) |item, i| {
         std.debug.print("\n  [{d}] ", .{i + 1});
-        
+
         if (item.title) |title| {
             std.debug.print("{s}\n", .{title});
         } else {
             std.debug.print("(no title)\n", .{});
         }
-        
+
         if (item.url) |url| {
             std.debug.print("      URL: {s}\n", .{url});
         }
-        
+
         if (item.author) |author| {
             std.debug.print("      Author: {s}\n", .{author});
         }
-        
+
         if (item.date_published) |date| {
             std.debug.print("      Published: {s}\n", .{date});
         }
-        
+
         if (item.tags.items.len > 0) {
             std.debug.print("      Tags: ", .{});
             for (item.tags.items, 0..) |tag, j| {

@@ -78,7 +78,7 @@ pub const Parser = struct {
 
     pub fn parse(self: *Parser) !*Node {
         self.skipWhitespace();
-        
+
         // Skip XML declaration if present
         if (self.peek(5)) |text| {
             if (std.mem.eql(u8, text, "<?xml")) {
@@ -92,7 +92,7 @@ pub const Parser = struct {
 
     fn parseElement(self: *Parser) XmlError!*Node {
         if (!self.expect('<')) return XmlError.InvalidElement;
-        
+
         // Check for comment
         if (self.peek(3)) |text| {
             if (std.mem.eql(u8, text, "!--")) {
@@ -110,7 +110,7 @@ pub const Parser = struct {
         const name = try self.parseName();
         const node = try Node.init(self.allocator, .element);
         errdefer node.deinit();
-        
+
         node.name = name;
 
         self.skipWhitespace();
@@ -118,15 +118,15 @@ pub const Parser = struct {
         // Parse attributes
         while (self.current()) |c| {
             if (c == '>' or (c == '/' and self.peekChar(1) == '>')) break;
-            
+
             const attr_name = try self.parseName();
             self.skipWhitespace();
-            
+
             if (!self.expect('=')) return XmlError.InvalidAttribute;
-            
+
             self.skipWhitespace();
             const attr_value = try self.parseAttributeValue();
-            
+
             try node.addAttribute(attr_name, attr_value);
             self.skipWhitespace();
         }
@@ -144,7 +144,7 @@ pub const Parser = struct {
         // Parse children (content)
         while (true) {
             self.skipWhitespace();
-            
+
             if (self.peek(2)) |text| {
                 if (std.mem.eql(u8, text, "</")) {
                     break;
@@ -199,7 +199,7 @@ pub const Parser = struct {
     fn parseComment(self: *Parser) !*Node {
         // Skip "!--"
         self.position += 3;
-        
+
         const start = self.position;
         while (true) {
             if (self.peek(3)) |text| {
@@ -218,7 +218,7 @@ pub const Parser = struct {
     fn parseCData(self: *Parser) !*Node {
         // Skip "![CDATA["
         self.position += 8;
-        
+
         const start = self.position;
         while (true) {
             if (self.peek(3)) |text| {
@@ -250,10 +250,10 @@ pub const Parser = struct {
     fn parseAttributeValue(self: *Parser) ![]const u8 {
         const quote = self.current() orelse return XmlError.InvalidAttribute;
         if (quote != '"' and quote != '\'') return XmlError.InvalidAttribute;
-        
+
         self.position += 1;
         const start = self.position;
-        
+
         while (self.current()) |c| {
             if (c == quote) {
                 const value = self.input[start..self.position];
@@ -262,7 +262,7 @@ pub const Parser = struct {
             }
             self.position += 1;
         }
-        
+
         return XmlError.InvalidAttribute;
     }
 
@@ -315,7 +315,7 @@ pub const Parser = struct {
 // Tests
 test "parse simple element" {
     const allocator = std.testing.allocator;
-    
+
     const xml = "<root></root>";
     var parser = Parser.init(allocator, xml);
     const node = try parser.parse();
@@ -328,7 +328,7 @@ test "parse simple element" {
 
 test "parse element with attributes" {
     const allocator = std.testing.allocator;
-    
+
     const xml = "<root attr1=\"value1\" attr2=\"value2\"></root>";
     var parser = Parser.init(allocator, xml);
     const node = try parser.parse();
@@ -345,7 +345,7 @@ test "parse element with attributes" {
 
 test "parse self-closing element" {
     const allocator = std.testing.allocator;
-    
+
     const xml = "<root/>";
     var parser = Parser.init(allocator, xml);
     const node = try parser.parse();
@@ -358,7 +358,7 @@ test "parse self-closing element" {
 
 test "parse element with text content" {
     const allocator = std.testing.allocator;
-    
+
     const xml = "<root>Hello, World!</root>";
     var parser = Parser.init(allocator, xml);
     const node = try parser.parse();
@@ -373,7 +373,7 @@ test "parse element with text content" {
 
 test "parse nested elements" {
     const allocator = std.testing.allocator;
-    
+
     const xml = "<root><child1><grandchild/></child1><child2/></root>";
     var parser = Parser.init(allocator, xml);
     const node = try parser.parse();
@@ -390,7 +390,7 @@ test "parse nested elements" {
 
 test "parse element with XML declaration" {
     const allocator = std.testing.allocator;
-    
+
     const xml = "<?xml version=\"1.0\" encoding=\"UTF-8\"?><root></root>";
     var parser = Parser.init(allocator, xml);
     const node = try parser.parse();
@@ -402,7 +402,7 @@ test "parse element with XML declaration" {
 
 test "parse comment" {
     const allocator = std.testing.allocator;
-    
+
     const xml = "<root><!-- This is a comment --></root>";
     var parser = Parser.init(allocator, xml);
     const node = try parser.parse();
@@ -416,7 +416,7 @@ test "parse comment" {
 
 test "parse CDATA" {
     const allocator = std.testing.allocator;
-    
+
     const xml = "<root><![CDATA[Some <data> & stuff]]></root>";
     var parser = Parser.init(allocator, xml);
     const node = try parser.parse();
@@ -430,7 +430,7 @@ test "parse CDATA" {
 
 test "parse complex XML document" {
     const allocator = std.testing.allocator;
-    
+
     const xml =
         \\<?xml version="1.0"?>
         \\<catalog>
@@ -446,14 +446,14 @@ test "parse complex XML document" {
         \\  </book>
         \\</catalog>
     ;
-    
+
     var parser = Parser.init(allocator, xml);
     const node = try parser.parse();
     defer node.deinit();
 
     try std.testing.expectEqualStrings("catalog", node.name.?);
     try std.testing.expect(node.children.items.len == 2);
-    
+
     const book1 = node.children.items[0];
     try std.testing.expectEqualStrings("book", book1.name.?);
     try std.testing.expect(book1.attributes.items.len == 1);
@@ -464,7 +464,7 @@ test "parse complex XML document" {
 
 test "error on unmatched closing tag" {
     const allocator = std.testing.allocator;
-    
+
     const xml = "<root><child></wrong></root>";
     var parser = Parser.init(allocator, xml);
     const result = parser.parse();
@@ -473,7 +473,7 @@ test "error on unmatched closing tag" {
 
 test "error on missing closing tag" {
     const allocator = std.testing.allocator;
-    
+
     const xml = "<root><child></root>";
     var parser = Parser.init(allocator, xml);
     const result = parser.parse();

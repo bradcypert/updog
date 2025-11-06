@@ -95,7 +95,7 @@ pub const Parser = struct {
             return JsonFeedError.InvalidJsonFeed;
         }
 
-        var authors = std.ArrayList(JsonFeedAuthor){};
+        var authors: std.ArrayList(JsonFeedAuthor) = .empty;
         if (obj.get("authors")) |authors_value| {
             if (authors_value == .array) {
                 for (authors_value.array.items) |author_value| {
@@ -107,7 +107,7 @@ pub const Parser = struct {
             }
         }
 
-        var items = std.ArrayList(JsonFeedItem){};
+        var items: std.ArrayList(JsonFeedItem) = .empty;
         if (obj.get("items")) |items_value| {
             if (items_value == .array) {
                 for (items_value.array.items) |item_value| {
@@ -138,7 +138,7 @@ pub const Parser = struct {
     fn parseItem(self: *Parser, obj: std.json.ObjectMap) !JsonFeedItem {
         const id = self.getStringField(obj, "id") orelse return JsonFeedError.MissingRequiredField;
 
-        var authors = std.ArrayList(JsonFeedAuthor){};
+        var authors: std.ArrayList(JsonFeedAuthor) = .empty;
         if (obj.get("authors")) |authors_value| {
             if (authors_value == .array) {
                 for (authors_value.array.items) |author_value| {
@@ -150,7 +150,7 @@ pub const Parser = struct {
             }
         }
 
-        var tags = std.ArrayList([]const u8){};
+        var tags: std.ArrayList([]const u8) = .empty;
         if (obj.get("tags")) |tags_value| {
             if (tags_value == .array) {
                 for (tags_value.array.items) |tag_value| {
@@ -161,7 +161,7 @@ pub const Parser = struct {
             }
         }
 
-        var attachments = std.ArrayList(JsonFeedAttachment){};
+        var attachments: std.ArrayList(JsonFeedAttachment) = .empty;
         if (obj.get("attachments")) |attachments_value| {
             if (attachments_value == .array) {
                 for (attachments_value.array.items) |attachment_value| {
@@ -369,7 +369,7 @@ test "parse JSON Feed with tags and attachments" {
 
     try std.testing.expect(feed.items.items.len == 1);
     const item = feed.items.items[0];
-    
+
     try std.testing.expect(item.tags.items.len == 2);
     try std.testing.expectEqualStrings("technology", item.tags.items[0]);
     try std.testing.expectEqualStrings("programming", item.tags.items[1]);

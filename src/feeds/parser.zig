@@ -28,7 +28,7 @@ pub const FeedItem = struct {
     date_modified: ?[]const u8 = null,
     author: ?[]const u8 = null,
     tags: std.ArrayList([]const u8),
-    
+
     pub fn deinit(self: *FeedItem, allocator: Allocator) void {
         self.tags.deinit(allocator);
     }
@@ -41,7 +41,7 @@ pub const Feed = struct {
     description: ?[]const u8 = null,
     items: std.ArrayList(FeedItem),
     allocator: Allocator,
-    
+
     // Store original parsed feeds to keep memory valid
     rss_feed: ?rss.RssFeed = null,
     atom_feed: ?atom.AtomFeed = null,
@@ -52,7 +52,7 @@ pub const Feed = struct {
             item.deinit(self.allocator);
         }
         self.items.deinit(self.allocator);
-        
+
         if (self.rss_feed) |*feed| {
             feed.deinit();
         }
@@ -74,7 +74,7 @@ pub const Parser = struct {
 
     pub fn parse(self: *Parser, input: []const u8) !Feed {
         const feed_type = try self.detectFeedType(input);
-        
+
         return switch (feed_type) {
             .rss => try self.parseRss(input),
             .atom => try self.parseAtom(input),
@@ -84,24 +84,24 @@ pub const Parser = struct {
 
     fn detectFeedType(self: *Parser, input: []const u8) !FeedType {
         _ = self;
-        
+
         // Trim leading whitespace
         var start: usize = 0;
         while (start < input.len and std.ascii.isWhitespace(input[start])) {
             start += 1;
         }
-        
+
         if (start >= input.len) return FeedError.UnknownFeedFormat;
-        
+
         // Check for JSON
         if (input[start] == '{') {
             return .json_feed;
         }
-        
+
         // Must be XML - look for RSS or Atom root element
         // Find first element after optional XML declaration
         var pos = start;
-        
+
         // Skip XML declaration if present
         if (std.mem.indexOf(u8, input[pos..], "<?xml")) |xml_decl_pos| {
             if (xml_decl_pos < 10) { // Should be near the start
@@ -110,23 +110,23 @@ pub const Parser = struct {
                 }
             }
         }
-        
+
         // Skip whitespace after declaration
         while (pos < input.len and std.ascii.isWhitespace(input[pos])) {
             pos += 1;
         }
-        
+
         if (pos >= input.len) return FeedError.UnknownFeedFormat;
-        
+
         // Look for root element
         if (std.mem.indexOf(u8, input[pos..], "<rss")) |_| {
             return .rss;
         }
-        
+
         if (std.mem.indexOf(u8, input[pos..], "<feed")) |_| {
             return .atom;
         }
-        
+
         return FeedError.UnknownFeedFormat;
     }
 
@@ -135,7 +135,7 @@ pub const Parser = struct {
         var rss_feed = try rss_parser.parse(input);
         errdefer rss_feed.deinit();
 
-        var items = std.ArrayList(FeedItem){};
+        var items: std.ArrayList(FeedItem) = .empty;
         errdefer {
             for (items.items) |*item| {
                 item.deinit(self.allocator);
@@ -144,7 +144,7 @@ pub const Parser = struct {
         }
 
         for (rss_feed.channel.items.items) |rss_item| {
-            var tags = std.ArrayList([]const u8){};
+            var tags: std.ArrayList([]const u8) = .empty;
             if (rss_item.category) |cat| {
                 try tags.append(self.allocator, cat);
             }
@@ -181,7 +181,7 @@ pub const Parser = struct {
         var atom_feed = try atom_parser.parse(input);
         errdefer atom_feed.deinit();
 
-        var items = std.ArrayList(FeedItem){};
+        var items: std.ArrayList(FeedItem) = .empty;
         errdefer {
             for (items.items) |*item| {
                 item.deinit(self.allocator);
@@ -210,7 +210,7 @@ pub const Parser = struct {
             }
 
             // Copy categories to tags
-            var tags = std.ArrayList([]const u8){};
+            var tags: std.ArrayList([]const u8) = .empty;
             for (entry.categories.items) |category| {
                 try tags.append(self.allocator, category);
             }
@@ -258,7 +258,7 @@ pub const Parser = struct {
         var json_data = try json_parser.parse(input);
         errdefer json_data.deinit();
 
-        var items = std.ArrayList(FeedItem){};
+        var items: std.ArrayList(FeedItem) = .empty;
         errdefer {
             for (items.items) |*item| {
                 item.deinit(self.allocator);
@@ -274,7 +274,7 @@ pub const Parser = struct {
             }
 
             // Copy tags
-            var tags = std.ArrayList([]const u8){};
+            var tags: std.ArrayList([]const u8) = .empty;
             for (json_item.tags.items) |tag| {
                 try tags.append(self.allocator, tag);
             }
@@ -310,7 +310,7 @@ pub const Parser = struct {
 // Tests
 test "detect RSS feed" {
     const allocator = std.testing.allocator;
-    
+
     const rss_xml =
         \\<?xml version="1.0"?>
         \\<rss version="2.0">
@@ -329,7 +329,7 @@ test "detect RSS feed" {
 
 test "detect Atom feed" {
     const allocator = std.testing.allocator;
-    
+
     const atom_xml =
         \\<?xml version="1.0"?>
         \\<feed xmlns="http://www.w3.org/2005/Atom">
@@ -346,7 +346,7 @@ test "detect Atom feed" {
 
 test "detect JSON Feed" {
     const allocator = std.testing.allocator;
-    
+
     const json_data =
         \\{
         \\  "version": "https://jsonfeed.org/version/1.1",
@@ -361,7 +361,7 @@ test "detect JSON Feed" {
 
 test "parse RSS feed via unified parser" {
     const allocator = std.testing.allocator;
-    
+
     const rss_xml =
         \\<?xml version="1.0"?>
         \\<rss version="2.0">
@@ -392,7 +392,7 @@ test "parse RSS feed via unified parser" {
 
 test "parse Atom feed via unified parser" {
     const allocator = std.testing.allocator;
-    
+
     const atom_xml =
         \\<?xml version="1.0"?>
         \\<feed xmlns="http://www.w3.org/2005/Atom">
@@ -420,7 +420,7 @@ test "parse Atom feed via unified parser" {
 
 test "parse JSON Feed via unified parser" {
     const allocator = std.testing.allocator;
-    
+
     const json_data =
         \\{
         \\  "version": "https://jsonfeed.org/version/1.1",
@@ -449,7 +449,7 @@ test "parse JSON Feed via unified parser" {
 
 test "error on unknown format" {
     const allocator = std.testing.allocator;
-    
+
     const invalid = "<html><body>Not a feed</body></html>";
 
     var parser = Parser.init(allocator);

@@ -2,7 +2,7 @@ const std = @import("std");
 const xml = @import("parser.zig");
 
 pub fn main() !void {
-    var gpa = std.heap.GeneralPurposeAllocator(.{}){};
+    var gpa = std.heap.DebugAllocator(.{}){};
     defer _ = gpa.deinit();
     const allocator = gpa.allocator();
 
@@ -38,22 +38,22 @@ pub fn main() !void {
     for (root.children.items) |child| {
         if (child.node_type == .element) {
             std.debug.print("Book: {s}\n", .{child.name.?});
-            
+
             // Print attributes
             for (child.attributes.items) |attr| {
                 std.debug.print("  @{s} = \"{s}\"\n", .{ attr.name, attr.value });
             }
-            
+
             // Print child elements
             for (child.children.items) |field| {
                 if (field.node_type == .element) {
                     std.debug.print("  {s}: ", .{field.name.?});
-                    
+
                     // Print attributes if any
                     for (field.attributes.items) |attr| {
                         std.debug.print("[@{s}=\"{s}\"] ", .{ attr.name, attr.value });
                     }
-                    
+
                     // Print text or CDATA content
                     for (field.children.items) |content| {
                         if (content.node_type == .text) {

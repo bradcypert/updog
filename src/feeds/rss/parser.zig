@@ -126,7 +126,7 @@ pub const Parser = struct {
         var category: ?[]const u8 = null;
         var generator: ?[]const u8 = null;
         var ttl: ?[]const u8 = null;
-        var items = std.ArrayList(RssItem){};
+        var items: std.ArrayList(RssItem) = .empty;
 
         for (node.children.items) |child| {
             if (child.node_type != .element or child.name == null) continue;
@@ -295,7 +295,7 @@ test "parse RSS feed with items" {
     defer feed.deinit();
 
     try std.testing.expect(feed.channel.items.items.len == 2);
-    
+
     const item1 = feed.channel.items.items[0];
     try std.testing.expectEqualStrings("First Post", item1.title.?);
     try std.testing.expectEqualStrings("https://techblog.com/first", item1.link.?);
