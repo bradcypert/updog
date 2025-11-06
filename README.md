@@ -1,4 +1,4 @@
-# Whats Updog?
+# What's Updog?
 
 Nothin' much, how about you?
 
