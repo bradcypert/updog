@@ -79,11 +79,13 @@ pub const Parser = struct {
     pub fn parse(self: *Parser) !*Node {
         self.skipWhitespace();
 
-        // Skip XML declaration if present
-        if (self.peek(5)) |text| {
-            if (std.mem.eql(u8, text, "<?xml")) {
-                try self.skipXmlDeclaration();
+        // Skip XML declaration and any processing instructions
+        while (self.peek(2)) |text| {
+            if (std.mem.eql(u8, text, "<?")) {
+                try self.skipProcessingInstruction();
                 self.skipWhitespace();
+            } else {
+                break;
             }
         }
 
@@ -266,15 +268,20 @@ pub const Parser = struct {
         return XmlError.InvalidAttribute;
     }
 
-    fn skipXmlDeclaration(self: *Parser) !void {
-        while (self.current()) |c| {
-            if (c == '>') {
-                self.position += 1;
-                return;
+    fn skipProcessingInstruction(self: *Parser) !void {
+        // Skip the opening <?
+        self.position += 2;
+        
+        while (true) {
+            if (self.peek(2)) |text| {
+                if (std.mem.eql(u8, text, "?>")) {
+                    self.position += 2;
+                    return;
+                }
             }
+            if (self.current() == null) return XmlError.InvalidXmlDeclaration;
             self.position += 1;
         }
-        return XmlError.InvalidXmlDeclaration;
     }
 
     fn skipWhitespace(self: *Parser) void {
@@ -478,4 +485,18 @@ test "error on missing closing tag" {
     var parser = Parser.init(allocator, xml);
     const result = parser.parse();
     try std.testing.expectError(XmlError.UnmatchedClosingTag, result);
+}
+
+test "parse element with processing instruction" {
+    const allocator = std.testing.allocator;
+
+    const xml = "<?xml version=\"1.0\" encoding=\"UTF-8\"?><?xml-stylesheet href=\"style.xsl\" type=\"text/xsl\"?><root><child>test</child></root>";
+    var parser = Parser.init(allocator, xml);
+    const node = try parser.parse();
+    defer node.deinit();
+
+    try std.testing.expect(node.node_type == .element);
+    try std.testing.expectEqualStrings("root", node.name.?);
+    try std.testing.expect(node.children.items.len == 1);
+    try std.testing.expectEqualStrings("child", node.children.items[0].name.?);
 }
