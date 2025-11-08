@@ -98,6 +98,11 @@ pub const Parser = struct {
                 title = self.getTextContent(child);
             } else if (std.mem.eql(u8, name, "updated")) {
                 updated = self.getTextContent(child);
+            } else if (std.mem.eql(u8, name, "published")) {
+                // Use published as fallback for updated if updated is not present
+                if (updated == null) {
+                    updated = self.getTextContent(child);
+                }
             } else if (std.mem.eql(u8, name, "subtitle")) {
                 subtitle = self.getTextContent(child);
             } else if (std.mem.eql(u8, name, "link")) {
@@ -438,4 +443,31 @@ test "error on missing required feed fields" {
 
     var parser = Parser.init(allocator);
     try std.testing.expectError(AtomError.MissingRequiredField, parser.parse(invalid_xml));
+}
+
+test "parse Atom feed with published instead of updated" {
+    const allocator = std.testing.allocator;
+
+    const atom_xml =
+        \\<?xml version="1.0"?>
+        \\<feed xmlns="http://www.w3.org/2005/Atom">
+        \\  <id>test:feed</id>
+        \\  <title>Test Feed</title>
+        \\  <published>2024-01-01T00:00:00Z</published>
+        \\  <entry>
+        \\    <id>test:entry1</id>
+        \\    <title>Entry 1</title>
+        \\    <updated>2024-01-01T00:00:00Z</updated>
+        \\  </entry>
+        \\</feed>
+    ;
+
+    var parser = Parser.init(allocator);
+    var feed = try parser.parse(atom_xml);
+    defer feed.deinit();
+
+    try std.testing.expectEqualStrings("test:feed", feed.id);
+    try std.testing.expectEqualStrings("Test Feed", feed.title);
+    try std.testing.expectEqualStrings("2024-01-01T00:00:00Z", feed.updated);
+    try std.testing.expect(feed.entries.items.len == 1);
 }
