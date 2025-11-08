@@ -22,7 +22,7 @@ How fields from different formats map to the unified structure:
 | `item.url` | `item/link` | `entry/link[@rel=alternate]` | `items[]/url` |
 | `item.content_html` | `item/description` | `entry/content` | `items[]/content_html` |
 | `item.content_text` | - | - | `items[]/content_text` |
-| `item.summary` | - | `entry/summary` | `items[]/summary` |
+| `item.summary` | `item/description` | `entry/summary` | `items[]/summary` |
 | `item.date_published` | `item/pubDate` | `entry/published` | `items[]/date_published` |
 | `item.date_modified` | - | `entry/updated` | `items[]/date_modified` |
 | `item.author` | `item/author` | `entry/author/name` | `items[]/authors[0]/name` |
