@@ -83,9 +83,9 @@ pub const Parser = struct {
         var title: ?[]const u8 = null;
         var updated: ?[]const u8 = null;
         var subtitle: ?[]const u8 = null;
-        var links = std.ArrayList(AtomLink){};
-        var authors = std.ArrayList(AtomPerson){};
-        var entries = std.ArrayList(AtomEntry){};
+        var links: std.ArrayList(AtomLink) = .empty;
+        var authors: std.ArrayList(AtomPerson) = .empty;
+        var entries: std.ArrayList(AtomEntry) = .empty;
 
         for (root.children.items) |child| {
             if (child.node_type != .element or child.name == null) continue;
@@ -141,9 +141,9 @@ pub const Parser = struct {
         var published: ?[]const u8 = null;
         var summary: ?[]const u8 = null;
         var content: ?[]const u8 = null;
-        var links = std.ArrayList(AtomLink){};
-        var authors = std.ArrayList(AtomPerson){};
-        var categories = std.ArrayList([]const u8){};
+        var links: std.ArrayList(AtomLink) = .empty;
+        var authors: std.ArrayList(AtomPerson) = .empty;
+        var categories: std.ArrayList([]const u8) = .empty;
 
         for (node.children.items) |child| {
             if (child.node_type != .element or child.name == null) continue;
@@ -309,7 +309,7 @@ test "parse Atom feed with entries" {
     defer feed.deinit();
 
     try std.testing.expect(feed.entries.items.len == 2);
-    
+
     const entry1 = feed.entries.items[0];
     try std.testing.expectEqualStrings("urn:uuid:entry-1", entry1.id);
     try std.testing.expectEqualStrings("First Entry", entry1.title);
@@ -339,7 +339,7 @@ test "parse Atom feed with links" {
     defer feed.deinit();
 
     try std.testing.expect(feed.links.items.len == 2);
-    
+
     const link1 = feed.links.items[0];
     try std.testing.expectEqualStrings("https://example.com/", link1.href);
     try std.testing.expectEqualStrings("alternate", link1.rel.?);
