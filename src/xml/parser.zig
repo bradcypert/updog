@@ -28,6 +28,7 @@ pub const Node = struct {
     node_type: NodeType,
     name: ?[]const u8,
     value: ?[]const u8,
+    value_owned: bool,
     attributes: std.ArrayList(Attribute),
     children: std.ArrayList(*Node),
     allocator: Allocator,
@@ -38,6 +39,7 @@ pub const Node = struct {
             .node_type = node_type,
             .name = null,
             .value = null,
+            .value_owned = false,
             .attributes = .{},
             .children = .{},
             .allocator = allocator,
@@ -46,6 +48,9 @@ pub const Node = struct {
     }
 
     pub fn deinit(self: *Node) void {
+        if (self.value_owned) {
+            if (self.value) |v| self.allocator.free(v);
+        }
         for (self.children.items) |child| {
             child.deinit();
         }
@@ -193,9 +198,78 @@ pub const Parser = struct {
         }
 
         const node = try Node.init(self.allocator, .text);
-        const text = self.input[start..self.position];
-        node.value = std.mem.trim(u8, text, &std.ascii.whitespace);
+        const text = std.mem.trim(u8, self.input[start..self.position], &std.ascii.whitespace);
+        if (try decodeEntities(self.allocator, text)) |decoded| {
+            node.value = decoded;
+            node.value_owned = true;
+        } else {
+            node.value = text;
+        }
         return node;
+    }
+
+    fn decodeEntities(allocator: Allocator, input: []const u8) !?[]const u8 {
+        if (std.mem.indexOf(u8, input, "&") == null) return null;
+
+        var result: std.ArrayList(u8) = .empty;
+        errdefer result.deinit(allocator);
+
+        var i: usize = 0;
+        while (i < input.len) {
+            if (input[i] != '&') {
+                try result.append(allocator, input[i]);
+                i += 1;
+                continue;
+            }
+
+            const end = std.mem.indexOfScalarPos(u8, input, i + 1, ';') orelse {
+                try result.append(allocator, '&');
+                i += 1;
+                continue;
+            };
+
+            const entity = input[i + 1 .. end];
+
+            if (std.mem.eql(u8, entity, "amp")) {
+                try result.append(allocator, '&');
+            } else if (std.mem.eql(u8, entity, "lt")) {
+                try result.append(allocator, '<');
+            } else if (std.mem.eql(u8, entity, "gt")) {
+                try result.append(allocator, '>');
+            } else if (std.mem.eql(u8, entity, "quot")) {
+                try result.append(allocator, '"');
+            } else if (std.mem.eql(u8, entity, "apos")) {
+                try result.append(allocator, '\'');
+            } else if (entity.len > 1 and entity[0] == '#') {
+                const num_str = entity[1..];
+                const codepoint: u21 = if (num_str.len > 1 and num_str[0] == 'x')
+                    std.fmt.parseInt(u21, num_str[1..], 16) catch {
+                        try result.appendSlice(allocator, input[i .. end + 1]);
+                        i = end + 1;
+                        continue;
+                    }
+                else
+                    std.fmt.parseInt(u21, num_str, 10) catch {
+                        try result.appendSlice(allocator, input[i .. end + 1]);
+                        i = end + 1;
+                        continue;
+                    };
+
+                var buf: [4]u8 = undefined;
+                const len = std.unicode.utf8Encode(codepoint, &buf) catch {
+                    try result.appendSlice(allocator, input[i .. end + 1]);
+                    i = end + 1;
+                    continue;
+                };
+                try result.appendSlice(allocator, buf[0..len]);
+            } else {
+                try result.appendSlice(allocator, input[i .. end + 1]);
+            }
+
+            i = end + 1;
+        }
+
+        return try result.toOwnedSlice(allocator);
     }
 
     fn parseComment(self: *Parser) !*Node {
@@ -485,6 +559,40 @@ test "error on missing closing tag" {
     var parser = Parser.init(allocator, xml);
     const result = parser.parse();
     try std.testing.expectError(XmlError.UnmatchedClosingTag, result);
+}
+
+test "decode named entities in text content" {
+    const allocator = std.testing.allocator;
+
+    const xml = "<root>Go 1.26&apos;s &amp; &lt;features&gt;</root>";
+    var parser = Parser.init(allocator, xml);
+    const node = try parser.parse();
+    defer node.deinit();
+
+    try std.testing.expectEqualStrings("Go 1.26's & <features>", node.children.items[0].value.?);
+}
+
+test "decode numeric entities in text content" {
+    const allocator = std.testing.allocator;
+
+    const xml = "<root>it&#39;s &#x27;quoted&#x27;</root>";
+    var parser = Parser.init(allocator, xml);
+    const node = try parser.parse();
+    defer node.deinit();
+
+    try std.testing.expectEqualStrings("it's 'quoted'", node.children.items[0].value.?);
+}
+
+test "decode double-encoded entities in text content" {
+    const allocator = std.testing.allocator;
+
+    const xml = "<root>Go 1.26&amp;#39;s feature</root>";
+    var parser = Parser.init(allocator, xml);
+    const node = try parser.parse();
+    defer node.deinit();
+
+    // &amp; decodes to &, leaving &#39; which is a literal string (not re-processed)
+    try std.testing.expectEqualStrings("Go 1.26&#39;s feature", node.children.items[0].value.?);
 }
 
 test "parse element with processing instruction" {
