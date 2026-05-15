@@ -40,8 +40,8 @@ pub const Node = struct {
             .name = null,
             .value = null,
             .value_owned = false,
-            .attributes = .{},
-            .children = .{},
+            .attributes = .empty,
+            .children = .empty,
             .allocator = allocator,
         };
         return node;
@@ -345,7 +345,7 @@ pub const Parser = struct {
     fn skipProcessingInstruction(self: *Parser) !void {
         // Skip the opening <?
         self.position += 2;
-        
+
         while (true) {
             if (self.peek(2)) |text| {
                 if (std.mem.eql(u8, text, "?>")) {

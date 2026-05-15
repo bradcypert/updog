@@ -80,7 +80,7 @@ pub fn build(b: *std.Build) void {
     const feed_example = b.addExecutable(.{
         .name = "feed-example",
         .root_module = b.createModule(.{
-            .root_source_file = b.path("src/feeds/example.zig"),
+            .root_source_file = b.path("examples/universal_parser.zig"),
             .target = target,
             .optimize = optimize,
             .imports = &.{
